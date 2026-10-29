@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FourHire — Client Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+<style>
+:root{
+  --bg:#060606;--surface:#0f0f0f;--surface-2:#161616;--ink:#f4f4f0;--ink-dim:#a1a1a1;--ink-faint:#5c5c5c;--lime:#c8f05a;--lime-dark:#8bc92e;--radius:20px;--font-body:'Inter',system-ui,sans-serif;--font-display:'Space Grotesk',system-ui,sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;-webkit-font-smoothing:antialiased}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-weight:300;line-height:1.5;min-height:100vh;overflow-x:hidden}
+::selection{background:rgba(200,240,90,.22);color:#fff}
+.grain{position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:.035;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");background-size:256px 256px;}
+a{color:inherit;text-decoration:none}
+h1,h2,h3{font-family:var(--font-display);font-weight:600;letter-spacing:-.03em;line-height:.95}
+
+/* Auth screens */
+.auth-wrap{min-height:100vh;display:grid;place-items:center;padding:40px 20px}
+.auth-card{width:100%;max-width:420px;background:var(--surface);border:1px solid rgba(255,255,255,.06);border-radius:var(--radius);padding:48px 40px;position:relative;overflow:hidden}
+.auth-card::before{content:'';position:absolute;top:0;left:0;width:100%;height:2px;background:linear-gradient(90deg,var(--lime),transparent)}
+.logo-mark{display:flex;align-items:center;gap:12px;margin-bottom:32px}
+.logo-mark .sq{width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,var(--lime),var(--lime-dark));box-shadow:0 0 20px rgba(200,240,90,.25)}
+.logo-mark span{font-family:var(--font-display);font-weight:700;font-size:1.1rem;letter-spacing:-.02em}
+.logo-mark span em{color:var(--lime);font-style:normal}
+.auth-card h1{font-size:2rem;margin-bottom:8px}
+.auth-card p.sub{color:var(--ink-dim);font-size:.9rem;margin-bottom:32px}
+.field{margin-bottom:20px}
+.field label{display:block;font-size:.75rem;text-transform:uppercase;letter-spacing:.15em;color:var(--ink-faint);margin-bottom:8px;font-weight:500}
+.field input,.field select,.field textarea{width:100%;padding:14px 16px;background:var(--surface-2);border:1px solid rgba(255,255,255,.08);border-radius:12px;color:var(--ink);font-family:var(--font-body);font-size:.95rem;transition:border-color .2s,box-shadow .2s}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--lime);box-shadow:0 0 0 3px rgba(200,240,90,.12)}
+.field textarea{resize:vertical;min-height:100px}
+.btn{display:inline-block;padding:14px 28px;border-radius:100px;font-family:var(--font-display);font-weight:600;font-size:.9rem;letter-spacing:-.01em;cursor:pointer;border:none;transition:transform .2s,box-shadow .2s,background .2s}
+.btn-primary{background:var(--lime);color:#060606}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(200,240,90,.3)}
+.btn-ghost{background:transparent;color:var(--ink);border:1px solid rgba(255,255,255,.15)}
+.btn-ghost:hover{border-color:var(--lime);color:var(--lime)}
+.btn-block{width:100%}
+.auth-switch{text-align:center;margin-top:24px;font-size:.85rem;color:var(--ink-dim)}
+.auth-switch a{color:var(--lime);cursor:pointer}
+.auth-switch a:hover{text-decoration:underline}
+.error-msg{color:#ff6b6b;font-size:.85rem;margin-bottom:16px;display:none}
+
+/* App layout */
+.app{display:none;min-height:100vh}
+.topbar{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:20px 5vw;height:72px;background:rgba(6,6,6,.85);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.05)}
+.topbar .brand{display:flex;align-items:center;gap:12px;font-family:var(--font-display);font-weight:700;font-size:1.1rem}
+.topbar .brand .sq{width:28px;height:28px;border-radius:9px;background:linear-gradient(135deg,var(--lime),var(--lime-dark));box-shadow:0 0 16px rgba(200,240,90,.25)}
+.topbar .brand span em{color:var(--lime);font-style:normal}
+.topbar .user-info{display:flex;align-items:center;gap:16px;font-size:.85rem;color:var(--ink-dim)}
+.topbar .user-info strong{color:var(--ink);font-weight:500}
+.topbar .badge{background:rgba(200,240,90,.12);color:var(--lime);padding:4px 12px;border-radius:100px;font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;font-weight:600}
+.logout-btn{background:none;border:1px solid rgba(255,255,255,.1);color:var(--ink-dim);padding:8px 16px;border-radius:100px;font-size:.8rem;cursor:pointer;transition:all .2s}
+.logout-btn:hover{border-color:var(--lime);color:var(--lime)}
+
+.content{padding:40px 5vw;max-width:1400px;margin:0 auto}
+.section-title{font-size:1.8rem;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between}
+.section-title .btn{font-size:.8rem;padding:10px 20px}
+
+/* Project cards */
+.project-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:20px}
+.project-card{background:var(--surface);border:1px solid rgba(255,255,255,.06);border-radius:var(--radius);padding:28px;cursor:pointer;transition:transform .2s,border-color .2s,box-shadow .2s}
+.project-card:hover{transform:translateY(-4px);border-color:rgba(200,240,90,.3);box-shadow:0 20px 40px rgba(0,0,0,.4)}
+.project-card h3{font-size:1.2rem;margin-bottom:8px}
+.project-card p{color:var(--ink-dim);font-size:.85rem;line-height:1.5;margin-bottom:16px}
+.project-card .meta{display:flex;gap:12px;flex-wrap:wrap;font-size:.75rem}
+.project-card .meta span{background:var(--surface-2);padding:4px 10px;border-radius:100px;color:var(--ink-dim)}
+.project-card .meta span.status{color:var(--lime);background:rgba(200,240,90,.1)}
+
+/* Status badges */
+.status-badge{display:inline-block;padding:4px 12px;border-radius:100px;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;font-weight:600}
+.status-submitted{background:rgba(255,255,255,.08);color:var(--ink-dim)}
+.status-in_progress{background:rgba(200,240,90,.12);color:var(--lime)}
+.status-review{background:rgba(255,193,7,.12);color:#ffc107}
+.status-delivered{background:rgba(76,175,80,.12);color:#4caf50}
+
+/* Project detail */
+.project-detail{display:grid;grid-template-columns:1fr 400px;gap:32px}
+@media(max-width:1024px){.project-detail{grid-template-columns:1fr}}
+.detail-main{background:var(--surface);border:1px solid rgba(255,255,255,.06);border-radius:var(--radius);padding:36px}
+.detail-main h1{font-size:2rem;margin-bottom:16px}
+.detail-main .desc{color:var(--ink-dim);line-height:1.65;margin-bottom:24px}
+.detail-sidebar{display:flex;flex-direction:column;gap:20px}
+.sidebar-card{background:var(--surface);border:1px solid rgba(255,255,255,.06);border-radius:var(--radius);padding:24px}
+.sidebar-card h3{font-size:1rem;margin-bottom:16px;color:var(--ink)}
+.info-row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:.85rem}
+.info-row:last-child{border-bottom:none}
+.info-row span:first-child{color:var(--ink-dim)}
+.info-row span:last-child{font-weight:500}
+
+/* Chat */
+.chat-box{background:var(--surface);border:1px solid rgba(255,255,255,.06);border-radius:var(--radius);display:flex;flex-direction:column;height:500px}
+.chat-header{padding:20px;border-bottom:1px solid rgba(255,255,255,.06);font-family:var(--font-display);font-weight:600;font-size:1rem}
+.chat-messages{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:12px}
+.chat-msg{max-width:75%;padding:12px 16px;border-radius:16px;font-size:.9rem;line-height:1.5}
+.chat-msg.mine{align-self:flex-end;background:var(--lime);color:#060606;border-bottom-right-radius:4px}
+.chat-msg.theirs{align-self:flex-start;background:var(--surface-2);border-bottom-left-radius:4px}
+.chat-msg .meta{font-size:.7rem;opacity:.7;margin-bottom:4px;text-transform:uppercase;letter-spacing:.08em}
+.chat-input{display:flex;gap:12px;padding:16px;border-top:1px solid rgba(255,255,255,.06)}
+.chat-input input{flex:1;padding:12px 16px;background:var(--surface-2);border:1px solid rgba(255,255,255,.08);border-radius:12px;color:var(--ink);font-size:.9rem}
+.chat-input input:focus{outline:none;border-color:var(--lime)}
+.chat-input button{padding:12px 20px;background:var(--lime);color:#060606;border:none;border-radius:12px;font-weight:600;cursor:pointer}
+
+/* Payment */
+.pay-section{background:var(--surface);border:1px solid rgba(255,255,255,.06);border-radius:var(--radius);padding:24px}
+.pay-section h3{font-size:1rem;margin-bottom:16px}
+.pay-btn{width:100%;padding:14px;background:var(--lime);color:#060606;border:none;border-radius:12px;font-weight:600;cursor:pointer;font-family:var(--font-display);margin-bottom:8px}
+.pay-btn:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(200,240,90,.25)}
+.pay-btn.secondary{background:transparent;color:var(--ink);border:1px solid rgba(255,255,255,.15)}
+.pay-btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+
+/* Preview / Delivery */
+.preview-box{background:var(--surface-2);border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:20px;text-align:center;margin-bottom:16px}
+.preview-box img{max-width:100%;border-radius:12px;filter:brightness(.7)}
+.preview-box .watermark{color:var(--ink-dim);font-size:.75rem;margin-top:12px;text-transform:uppercase;letter-spacing:.15em}
+.download-btn{display:block;width:100%;padding:14px;background:var(--lime);color:#060606;border:none;border-radius:12px;font-weight:600;cursor:pointer;text-align:center;font-family:var(--font-display)}
+.download-btn:disabled{opacity:.4;cursor:not-allowed;background:var(--surface-2);color:var(--ink-dim)}
+
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);backdrop-filter:blur(8px);z-index:1000;display:none;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.show{display:flex}
+.modal{background:var(--surface);border:1px solid rgba(255,255,255,.08);border-radius:var(--radius);padding:40px;max-width:560px;width:100%;max-height:90vh;overflow-y:auto}
+.modal h2{font-size:1.6rem;margin-bottom:24px}
+.modal .close{position:absolute;top:20px;right:20px;background:none;border:none;color:var(--ink-dim);font-size:1.5rem;cursor:pointer}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--surface);border:1px solid rgba(200,240,90,.3);border-radius:12px;padding:16px 20px;color:var(--ink);font-size:.85rem;z-index:9999;transform:translateY(100px);opacity:0;transition:transform .3s,opacity .3s}
+.toast.show{transform:translateY(0);opacity:1}
+
+/* Enhanced animations */
+@keyframes gradientShift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(200,240,90,.4)}50%{box-shadow:0 0 0 12px rgba(200,240,90,0)}}
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+.auth-wrap{background:linear-gradient(135deg,#060606 0%,#0a0f0a 50%,#060606 100%);background-size:200% 200%;animation:gradientShift 15s ease infinite}
+.btn-primary{animation:pulse 3s ease-in-out infinite}
+.project-card{transition:transform .3s cubic-bezier(.34,1.56,.64,1),border-color .3s,box-shadow .3s}
+.project-card:hover{transform:translateY(-6px) scale(1.01)}
+.logo-mark .sq{animation:float 4s ease-in-out infinite}
+.modal{animation:modalIn .3s ease}
+@keyframes modalIn{from{opacity:0;transform:scale(.95) translateY(20px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.empty-state h3{font-size:1.4rem;margin-bottom:12px;color:var(--ink)}
+
+@media(max-width:640px){
+  .content{padding:24px 5vw}
+  .auth-card{padding:36px 24px}
+  .topbar{padding:16px 5vw;height:64px}
+  .project-detail{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="grain" aria-hidden="true"></div>
+
+<!-- Auth Screen -->
+<div id="authScreen" class="auth-wrap">
+  <div class="auth-card">
+    <div class="logo-mark">
+      <div class="sq"></div>
+      <span>FOUR<span style="color:var(--lime)">HIRE</span></span>
+    </div>
+    <div id="loginView">
+      <h1>Welcome back</h1>
+      <p class="sub">Log in to your FourHire workspace.</p>
+      <div class="error-msg" id="loginError"></div>
+      <div class="field"><label>Email</label><input type="email" id="loginEmail" placeholder="you@company.com"></div>
+      <div class="field"><label>Password</label><input type="password" id="loginPassword" placeholder="••••••••"></div>
+      <button class="btn btn-primary btn-block" onclick="doLogin()">Log In</button>
+      <div class="auth-switch">No account? <a onclick="showRegister()">Create one</a></div>
+    </div>
+    <div id="registerView" style="display:none">
+      <h1>Join FourHire</h1>
+      <p class="sub">Create your account to start.</p>
+      <div class="error-msg" id="registerError"></div>
+      <div class="field"><label>Name</label><input type="text" id="regName" placeholder="Your name"></div>
+      <div class="field"><label>Email</label><input type="email" id="regEmail" placeholder="you@company.com"></div>
+      <div class="field"><label>Password</label><input type="password" id="regPassword" placeholder="••••••••"></div>
+      <div class="field"><label>Role</label>
+        <div style="padding:14px 16px;background:var(--surface-2);border:1px solid rgba(255,255,255,.08);border-radius:12px;color:var(--ink-dim);font-size:.9rem">
+          Client — I want to hire FourHire
+        </div>
+        <input type="hidden" id="regRole" value="client">
+      </div>
+      <button class="btn btn-primary btn-block" onclick="doRegister()">Create Account</button>
+      <div class="auth-switch">Already have an account? <a onclick="showLogin()">Log in</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- App Screen -->
+<div id="appScreen" class="app">
+  <div class="topbar">
+    <div class="brand">
+      <div class="sq"></div>
+      <span>FOUR<span style="color:var(--lime)">HIRE</span></span>
+    </div>
+    <div class="user-info">
+      <span class="badge" id="roleBadge">CLIENT</span>
+      <strong id="userName">User</strong>
+      <button class="logout-btn" onclick="showSettings()" style="margin-right:8px">Settings</button>
+      <button class="logout-btn" onclick="doLogout()">Log out</button>
+    </div>
+  </div>
+  <div class="content">
+    <div id="dashboardView">
+      <div class="section-title">
+        <h2 id="dashboardTitle">Your Projects</h2>
+        <button class="btn btn-primary" id="newProjectBtn" onclick="showNewProjectModal()" style="display:none">+ New Project</button>
+      </div>
+      <div id="projectList" class="project-grid"></div>
+      <div id="emptyState" class="empty-state" style="display:none">
+        <h3>No projects yet</h3>
+        <p>Start by submitting your first project.</p>
+      </div>
+    </div>
+    <div id="projectDetailView" style="display:none">
+      <a href="#" onclick="showDashboard();return false" style="color:var(--lime);font-size:.85rem;display:inline-block;margin-bottom:20px">← Back to projects</a>
+      <div class="project-detail">
+        <div class="detail-main">
+          <h1 id="pdTitle">Project Title</h1>
+          <span class="status-badge" id="pdStatus">submitted</span>
+          <p class="desc" id="pdDesc" style="margin-top:16px"></p>
+          <div style="margin-top:24px">
+            <h3 style="font-size:1rem;margin-bottom:12px">Chat with FourHire</h3>
+            <div class="chat-box">
+              <div class="chat-header">Real-time negotiation</div>
+              <div class="chat-messages" id="chatMessages"></div>
+              <div class="chat-input">
+                <input type="text" id="chatInput" placeholder="Type a message..." onkeydown="if(event.key==='Enter')sendMessage()">
+                <button onclick="sendMessage()">Send</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="detail-sidebar">
+          <div class="sidebar-card">
+            <h3>Project Info</h3>
+            <div class="info-row"><span>Category</span><span id="pdCategory">—</span></div>
+            <div class="info-row"><span>Budget</span><span id="pdBudget">—</span></div>
+            <div class="info-row"><span>Deadline</span><span id="pdDeadline">—</span></div>
+            <div class="info-row"><span>Advance</span><span id="pdAdvance">—</span></div>
+            <div class="info-row"><span>Final</span><span id="pdFinal">—</span></div>
+          </div>
+          <div class="pay-section" id="paySection">
+            <h3>Payment</h3>
+            <p style="color:var(--ink-dim);font-size:.85rem;margin-bottom:16px" id="payInfo">Pay advance to start work.</p>
+            <button class="pay-btn" id="advanceBtn" onclick="payAdvance()">Pay Advance (₹)</button>
+            <button class="pay-btn secondary" id="finalBtn" onclick="payFinal()" style="display:none">Pay Final Amount (₹)</button>
+          </div>
+          <div class="sidebar-card" id="deliveryCard">
+            <h3>Delivery</h3>
+            <div class="preview-box" id="previewBox" style="display:none">
+              <img id="previewImg" src="" alt="Preview">
+              <div class="watermark">⚠ Watermarked Preview — Not Downloadable</div>
+            </div>
+            <button class="download-btn" id="downloadBtn" disabled onclick="downloadProject()">Download Project (Locked)</button>
+            <p style="color:var(--ink-dim);font-size:.75rem;margin-top:12px;text-align:center" id="downloadHint">Pay full amount to unlock download.</p>
+          </div>
+          <div class="sidebar-card" id="freelancerControls" style="display:none">
+            <h3>Freelancer Controls</h3>
+            <div class="field"><label>Set Advance (₹)</label><input type="number" id="setAdvance" placeholder="e.g. 5000"></div>
+            <div class="field"><label>Set Final (₹)</label><input type="number" id="setFinal" placeholder="e.g. 20000"></div>
+            <button class="btn btn-primary btn-block" style="margin-bottom:12px" onclick="updatePricing()">Update Pricing</button>
+            <div class="field"><label>Upload Final File</label><input type="file" id="deliverFile"></div>
+            <button class="btn btn-ghost btn-block" onclick="deliverProject()">Deliver Project</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- New Project Modal -->
+<div class="modal-overlay" id="newProjectModal">
+  <div class="modal" style="position:relative">
+    <button class="close" onclick="closeModal('newProjectModal')">×</button>
+    <h2>New Project</h2>
+    <div class="field"><label>Title</label><input type="text" id="npTitle" placeholder="e.g. Brand Identity for Startup"></div>
+    <div class="field"><label>Description</label><textarea id="npDesc" placeholder="Describe what you need..."></textarea></div>
+    <div class="field"><label>Category</label>
+      <select id="npCategory">
+        <option value="branding">Branding</option>
+        <option value="web">Web Development</option>
+        <option value="motion">Motion & Media</option>
+        <option value="strategy">Strategy</option>
+      </select>
+    </div>
+    <div class="field"><label>Budget Range (₹)</label>
+      <div style="display:flex;gap:12px">
+        <input type="number" id="npBudgetMin" placeholder="Min">
+        <input type="number" id="npBudgetMax" placeholder="Max">
+      </div>
+    </div>
+    <div class="field"><label>Deadline</label><input type="date" id="npDeadline"></div>
+    <button class="btn btn-primary btn-block" onclick="submitProject()">Submit Project</button>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal" style="position:relative">
+    <button class="close" onclick="closeModal('settingsModal')">×</button>
+    <h2>Profile & Connections</h2>
+    <div class="field"><label>Gmail (for contact)</label>
+      <div style="display:flex;gap:8px">
+        <input type="email" id="setGmail" placeholder="your@gmail.com" style="flex:1">
+        <button class="btn btn-ghost" onclick="sendVerifyGmail()" style="padding:12px 16px;font-size:.8rem">Verify</button>
+      </div>
+      <div id="gmailStatus" style="font-size:.75rem;margin-top:8px;color:var(--ink-dim)"></div>
+    </div>
+    <div class="field"><label>LinkedIn Profile URL</label><input type="url" id="setLinkedin" placeholder="https://linkedin.com/in/..."></div>
+    <div class="field"><label>Fiverr Profile URL</label><input type="url" id="setFiverr" placeholder="https://fiverr.com/..."></div>
+    <button class="btn btn-primary btn-block" onclick="saveProfile()">Save Profile</button>
+    <div style="margin-top:24px;padding-top:20px;border-top:1px solid rgba(255,255,255,.06)">
+      <h3 style="font-size:.9rem;margin-bottom:12px;color:var(--ink-dim)">Connect Accounts</h3>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <a href="https://linkedin.com" target="_blank" class="btn btn-ghost" style="font-size:.8rem;padding:10px 16px">LinkedIn</a>
+        <a href="https://fiverr.com" target="_blank" class="btn btn-ghost" style="font-size:.8rem;padding:10px 16px">Fiverr</a>
+        <a href="https://gmail.com" target="_blank" class="btn btn-ghost" style="font-size:.8rem;padding:10px 16px">Gmail</a>
+      </div>
+      <p style="color:var(--ink-dim);font-size:.75rem;margin-top:12px">Link your profiles so clients can reach you anywhere.</p>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="/app.js"></script>
+</body>
+</html>
