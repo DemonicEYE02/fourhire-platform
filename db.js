@@ -5,6 +5,11 @@ const path = require('path');
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'data', 'fourhire.db');
 const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(__dirname, 'uploads');
 
+// Ensure directories exist
+const dataDir = path.dirname(DB_PATH);
+if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+
 let db = null;
 
 async function initDB() {
